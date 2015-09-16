@@ -191,20 +191,15 @@ public class Battle extends SuperService{
 					
 					BattleHero hero = iter.next();
 					
-					if(hero.csv.heroType.moveType != 0){
+					if(hero.power > POWER_CAN_MOVE && hero.csv.heroType.moveType != 0 && !hero.isStopMove){
 						
 						canMoveHeroArr.add(hero.pos);
-					}
-					
-					if(hero.csv.heroType.canAttack){
 						
-						ArrayList<BattleHero> targetHeroArr = new ArrayList<>();
-						
-						BattlePublic.getHerosAndDirectionInRange(mapUnit.neighbourPosMap, heroMap, hero, 1, targetHeroArr, null);
+						ArrayList<BattleHero> targetHeroArr = BattlePublic.getOppHerosInNeighbour(mapUnit.neighbourPosMap, heroMap, hero);
 						
 						for(BattleHero tmpHero : targetHeroArr){
 							
-							if(!cantMoveHeroPosArr.contains(tmpHero.pos)){
+							if(tmpHero.power <= hero.power && !cantMoveHeroPosArr.contains(tmpHero.pos)){
 								
 								cantMoveHeroPosArr.add(tmpHero.pos);
 							}
@@ -584,7 +579,7 @@ public class Battle extends SuperService{
 			
 			Iterator<Entry<Integer, Integer>> iter = summonData1.entrySet().iterator();
 			
-			while(iter.hasNext()){
+			loop:while(iter.hasNext()){
 				
 				Entry<Integer, Integer> entry = iter.next();
 				
@@ -628,6 +623,23 @@ public class Battle extends SuperService{
 					service1.process("sendMsg", "BattleError 5");
 					
 					continue;
+				}
+				
+				int[] tmpPosArr = mapUnit.neighbourPosMap.get(pos);
+				
+				for(int tmpPos : tmpPosArr){
+					
+					if(canMoveHeroArr.contains(tmpPos)){
+						
+						BattleHero tmpHero = heroMap.get(tmpPos);
+						
+						if(!tmpHero.isHost){
+							
+							service1.process("sendMsg", "BattleError 12");
+							
+							continue loop;
+						}
+					}
 				}
 				
 				userCards1.remove(uid);
@@ -676,7 +688,7 @@ public class Battle extends SuperService{
 			
 			Iterator<Entry<Integer, Integer>> iter = summonData2.entrySet().iterator();
 			
-			while(iter.hasNext()){
+			loop:while(iter.hasNext()){
 				
 				Entry<Integer, Integer> entry = iter.next();
 				
@@ -694,32 +706,52 @@ public class Battle extends SuperService{
 				
 				Csv_hero heroCsv = Csv_hero.dic.get(cardID);
 				
-				if(service2 != null && heroCsv.star > money2){
-					
-					service2.process("sendMsg", "BattleError 2");
-					
-					continue;
-				}
+				if(service2 != null){
 				
-				if(service2 != null && !map.containsKey(pos)){
+					if(heroCsv.star > money2){
+						
+						service2.process("sendMsg", "BattleError 2");
+						
+						continue;
+					}
 					
-					service2.process("sendMsg", "BattleError 3");
+					if(!map.containsKey(pos)){
+						
+						service2.process("sendMsg", "BattleError 3");
+						
+						continue;
+					}
 					
-					continue;
-				}
-				
-				if(service2 != null && map.get(pos) == 1){
+					if(map.get(pos) == 1){
+						
+						service2.process("sendMsg", "BattleError 4");
+						
+						continue;
+					}
 					
-					service2.process("sendMsg", "BattleError 4");
+					if(heroMap.containsKey(pos)){
+						
+						service2.process("sendMsg", "BattleError 5");
+						
+						continue;
+					}
 					
-					continue;
-				}
-				
-				if(service2 != null && heroMap.containsKey(pos)){
+					int[] tmpPosArr = mapUnit.neighbourPosMap.get(pos);
 					
-					service2.process("sendMsg", "BattleError 5");
-					
-					continue;
+					for(int tmpPos : tmpPosArr){
+						
+						if(canMoveHeroArr.contains(tmpPos)){
+							
+							BattleHero tmpHero = heroMap.get(tmpPos);
+							
+							if(tmpHero.isHost){
+								
+								service2.process("sendMsg", "BattleError 12");
+								
+								continue loop;
+							}
+						}
+					}
 				}
 				
 				userCards2.remove(uid);
@@ -767,7 +799,7 @@ public class Battle extends SuperService{
 			
 			Iterator<Entry<Integer, Integer>> iter = moveData1.entrySet().iterator();
 			
-			while(iter.hasNext()){
+			loop:while(iter.hasNext()){
 				
 				Entry<Integer, Integer> entry = iter.next();
 				
@@ -818,6 +850,23 @@ public class Battle extends SuperService{
 				
 				if(targetPos != -1){
 					
+					if(map.get(targetPos) == 2){
+					
+						ArrayList<BattleHero> tmpHeroArr = BattlePublic.getOppHerosInNeighbour(mapUnit.neighbourPosMap, heroMap, hero);
+						
+						for(BattleHero oppHero : tmpHeroArr){
+							
+							if(canMoveHeroArr.contains(oppHero.pos)){
+								
+								service1.process("sendMsg", "BattleError 13");
+								
+								iter.remove();
+								
+								continue loop;
+							}
+						}
+					}
+					
 					entry.setValue(targetPos);
 					
 				}else{
@@ -833,7 +882,7 @@ public class Battle extends SuperService{
 			
 			Iterator<Entry<Integer, Integer>> iter = moveData2.entrySet().iterator();
 			
-			while(iter.hasNext()){
+			loop:while(iter.hasNext()){
 				
 				Entry<Integer, Integer> entry = iter.next();
 				
@@ -883,6 +932,23 @@ public class Battle extends SuperService{
 				int targetPos = mapUnit.neighbourPosMap.get(pos)[direct];
 				
 				if(targetPos != -1){
+					
+					if(service2 != null && map.get(targetPos) == 1){
+						
+						ArrayList<BattleHero> tmpHeroArr = BattlePublic.getOppHerosInNeighbour(mapUnit.neighbourPosMap, heroMap, hero);
+						
+						for(BattleHero oppHero : tmpHeroArr){
+							
+							if(canMoveHeroArr.contains(oppHero.pos)){
+								
+								service2.process("sendMsg", "BattleError 13");
+								
+								iter.remove();
+								
+								continue loop;
+							}
+						}
+					}
 					
 					entry.setValue(targetPos);
 					
@@ -1455,25 +1521,17 @@ public class Battle extends SuperService{
 			
 			hero.hasLosePower = false;
 			
-			if(hero.power > POWER_CAN_MOVE){
+			if(hero.power > POWER_CAN_MOVE && hero.csv.heroType.moveType != 0 && !hero.isStopMove){
 				
-				if(hero.csv.heroType.moveType != 0 && !hero.isStopMove){
-					
-					canMoveHeroArr.add(hero.pos);
-				}
+				canMoveHeroArr.add(hero.pos);
 				
-				if(hero.csv.heroType.canAttack){
+				ArrayList<BattleHero> targetHeroArr = BattlePublic.getOppHerosInNeighbour(mapUnit.neighbourPosMap, heroMap, hero);
 				
-					ArrayList<BattleHero> targetHeroArr = new ArrayList<>();
+				for(BattleHero tmpHero : targetHeroArr){
 					
-					BattlePublic.getHerosAndDirectionInRange(mapUnit.neighbourPosMap, heroMap, hero, 1, targetHeroArr, null);
-					
-					for(BattleHero tmpHero : targetHeroArr){
+					if(tmpHero.power <= hero.power && !cantMoveHeroPosArr.contains(tmpHero.pos)){
 						
-						if(!cantMoveHeroPosArr.contains(tmpHero.pos)){
-							
-							cantMoveHeroPosArr.add(tmpHero.pos);
-						}
+						cantMoveHeroPosArr.add(tmpHero.pos);
 					}
 				}
 			}
